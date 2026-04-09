@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Request, Header
 import cv2
 import numpy as np
-from pyzbar.pyzbar import decode
+#from pyzbar.pyzbar import decode
 import random
 
 app = FastAPI()
@@ -35,7 +35,8 @@ async def upload(request: Request, x_api_key: str = Header(None)):
     nombre = "NA"
     grado = "NA"
 
-    qr_data = decode(gray)
+    #qr_data = decode(gray)
+    qr_data = []
 
     if qr_data:
         for qr in qr_data:
