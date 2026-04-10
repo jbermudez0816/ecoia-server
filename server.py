@@ -116,7 +116,7 @@ def generate_stream():
             frame = base64.b64decode(last_image)
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
-        time.sleep(0.1)  # 🔥 fluidez
+        time.sleep(0.03)  # 🔥 fluidez
 
 
 @app.get("/stream")
