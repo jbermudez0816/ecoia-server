@@ -85,14 +85,16 @@ def view_image():
             <img id="cam" width="400"/>
             
             <script>
-                setInterval(() => {{
-                    fetch('/last')
+                setInterval(() => {
+                    fetch('/last?t=' + new Date().getTime())
                         .then(res => res.text())
-                        .then(data => {{
-                            document.getElementById('cam').src = 
-                            "data:image/jpeg;base64," + data + "&t=" + new Date().getTime();
-                        }});
-                }}, 1000);
+                        .then(data => {
+                            if (data && data.length > 100) {
+                                document.getElementById('cam').src = 
+                                "data:image/jpeg;base64," + data;
+                                }
+                            });
+                    }, 1000);
             </script>
         </body>
     </html>
