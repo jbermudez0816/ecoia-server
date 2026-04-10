@@ -28,10 +28,14 @@ async def upload(request: Request, x_api_key: str = Header(None)):
         return {"error": "No autorizado"}
 
     body = await request.body()
+
+    print(f"📦 Tamaño recibido: {len(body)} bytes")
+
     npimg = np.frombuffer(body, np.uint8)
     img = cv2.imdecode(npimg, cv2.IMREAD_COLOR)
 
     if img is None:
+        print("❌ OpenCV NO pudo decodificar la imagen")
         return {"error": "Imagen inválida"}
 
     # ===== PROCESAMIENTO =====
