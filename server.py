@@ -81,20 +81,21 @@ def view_image():
             <title>EcoIA Cámara</title>
         </head>
         <body style="text-align:center; font-family:sans-serif;">
-            <h2>📷 Cámara ESP32-CAM en vivo</h2>
-            <img id="cam" width="400"/>
-            
+            <h2>📷 Cámara ESP32 en vivo</h2>
+
+            <img id="cam" width="400" style="border:2px solid #333;"/>
+
             <script>
                 setInterval(() => {
                     fetch('/last?t=' + new Date().getTime())
                         .then(res => res.text())
                         .then(data => {
                             if (data && data.length > 100) {
-                                document.getElementById('cam').src = 
+                                document.getElementById('cam').src =
                                 "data:image/jpeg;base64," + data;
-                                }
-                            });
-                    }, 1000);
+                            }
+                        });
+                }, 1000);
             </script>
         </body>
     </html>
