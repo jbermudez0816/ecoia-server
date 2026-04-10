@@ -12,9 +12,11 @@ API_KEY = "ecoia123"
 # 📸 última imagen recibida
 last_image = None
 
+
 @app.get("/")
 def home():
     return {"msg": "Servidor EcoIA con visor en vivo 🔥"}
+
 
 # 📥 RECIBE IMAGEN
 @app.post("/upload")
@@ -32,7 +34,7 @@ async def upload(request: Request, x_api_key: str = Header(None)):
     if img is None:
         return {"error": "Imagen inválida"}
 
-    # ===== PROCESAMIENTO (opcional) =====
+    # ===== PROCESAMIENTO =====
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     gray = cv2.equalizeHist(gray)
 
@@ -71,11 +73,12 @@ async def upload(request: Request, x_api_key: str = Header(None)):
         "puntos": 10
     }
 
+
 # 🌐 VISOR EN VIVO
 @app.get("/view", response_class=HTMLResponse)
 def view_image():
 
-    return f"""
+    return """
     <html>
         <head>
             <title>EcoIA Cámara</title>
@@ -100,6 +103,7 @@ def view_image():
         </body>
     </html>
     """
+
 
 # 📡 endpoint que devuelve solo la imagen
 @app.get("/last")
