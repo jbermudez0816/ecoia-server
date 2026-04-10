@@ -34,9 +34,15 @@ async def upload(request: Request, x_api_key: str = Header(None)):
     npimg = np.frombuffer(body, np.uint8)
     img = cv2.imdecode(npimg, cv2.IMREAD_COLOR)
 
+    # 🔥 SI OpenCV falla, igual mostramos imagen
     if img is None:
-        print("❌ OpenCV NO pudo decodificar la imagen")
-        return {"error": "Imagen inválida"}
+        print("⚠️ OpenCV falló, usando imagen RAW")
+        last_image = base64.b64encode(body).decode('utf-8')
+        return {"ok": True}
+
+    # ✅ SI funciona, normal
+    _, buffer = cv2.imencode('.jpg', img)
+    last_image = base64.b64encode(buffer).decode('utf-8')
 
     # ===== PROCESAMIENTO =====
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
