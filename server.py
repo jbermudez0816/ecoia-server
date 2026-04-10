@@ -1,24 +1,27 @@
 from fastapi import FastAPI, Request, Header
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, StreamingResponse, PlainTextResponse
 import cv2
 import numpy as np
 import base64
+import time
 
 app = FastAPI()
 
 # 🔐 CLAVE
 API_KEY = "ecoia123"
 
-# 📸 última imagen recibida
+# 📸 última imagen
 last_image = None
 
 
 @app.get("/")
 def home():
-    return {"msg": "Servidor EcoIA con visor en vivo 🔥"}
+    return {"msg": "Servidor EcoIA PRO 🔥"}
 
 
+# =========================
 # 📥 RECIBE IMAGEN
+# =========================
 @app.post("/upload")
 async def upload(request: Request, x_api_key: str = Header(None)):
 
@@ -34,21 +37,18 @@ async def upload(request: Request, x_api_key: str = Header(None)):
     npimg = np.frombuffer(body, np.uint8)
     img = cv2.imdecode(npimg, cv2.IMREAD_COLOR)
 
-    # 🔥 SI OpenCV falla, igual mostramos imagen
+    # 🔥 FALLBACK (si OpenCV falla)
     if img is None:
         print("⚠️ OpenCV falló, usando imagen RAW")
         last_image = base64.b64encode(body).decode('utf-8')
         return {"ok": True}
 
-    # ✅ SI funciona, normal
-    _, buffer = cv2.imencode('.jpg', img)
-    last_image = base64.b64encode(buffer).decode('utf-8')
-
-    # ===== PROCESAMIENTO =====
+    # =========================
+    # 🧠 PROCESAMIENTO
+    # =========================
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     gray = cv2.equalizeHist(gray)
 
-    # ===== DETECTOR QR =====
     detector = cv2.QRCodeDetector()
     data, bbox, _ = detector.detectAndDecode(gray)
 
@@ -61,7 +61,7 @@ async def upload(request: Request, x_api_key: str = Header(None)):
         if len(parts) == 3:
             id, nombre, grado = parts
 
-        # Dibujar cuadro del QR
+        # 🟩 Dibujar cuadro QR
         if bbox is not None:
             bbox = bbox.astype(int)
             for i in range(len(bbox[0])):
@@ -69,7 +69,28 @@ async def upload(request: Request, x_api_key: str = Header(None)):
                 pt2 = tuple(bbox[0][(i + 1) % len(bbox[0])])
                 cv2.line(img, pt1, pt2, (0, 255, 0), 2)
 
-    # ===== GUARDAR IMAGEN PARA WEB =====
+    # =========================
+    # 📝 TEXTO EN PANTALLA
+    # =========================
+    texto = f"{nombre} - {grado}"
+
+    cv2.putText(img, texto,
+                (10, 30),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.7,
+                (0, 255, 0),
+                2)
+
+    cv2.putText(img, "EcoIA",
+                (10, img.shape[0] - 10),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                (255, 255, 255),
+                2)
+
+    # =========================
+    # 💾 GUARDAR IMAGEN
+    # =========================
     _, buffer = cv2.imencode('.jpg', img)
     last_image = base64.b64encode(buffer).decode('utf-8')
 
@@ -84,41 +105,54 @@ async def upload(request: Request, x_api_key: str = Header(None)):
     }
 
 
-# 🌐 VISOR EN VIVO
-@app.get("/view", response_class=HTMLResponse)
-def view_image():
+# =========================
+# 🎥 STREAM EN TIEMPO REAL
+# =========================
+def generate_stream():
+    global last_image
 
+    while True:
+        if last_image:
+            frame = base64.b64decode(last_image)
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+        time.sleep(0.1)  # 🔥 fluidez
+
+
+@app.get("/stream")
+def stream():
+    return StreamingResponse(
+        generate_stream(),
+        media_type="multipart/x-mixed-replace; boundary=frame"
+    )
+
+
+# =========================
+# 🌐 VISOR WEB
+# =========================
+@app.get("/view", response_class=HTMLResponse)
+def view():
     return """
     <html>
-        <head>
-            <title>EcoIA Cámara</title>
-        </head>
-        <body style="text-align:center; font-family:sans-serif;">
-            <h2>📷 Cámara ESP32 en vivo</h2>
+    <head>
+        <title>EcoIA PRO</title>
+    </head>
+    <body style="text-align:center; font-family:sans-serif;">
+        <h2>📷 Cámara en tiempo real</h2>
 
-            <img id="cam" width="400" style="border:2px solid #333;"/>
+        <img src="/stream" width="500" style="border:3px solid black;"/>
 
-            <script>
-                setInterval(() => {
-                    fetch('/last?t=' + new Date().getTime())
-                        .then(res => res.text())
-                        .then(data => {
-                            if (data && data.length > 100) {
-                                document.getElementById('cam').src =
-                                "data:image/jpeg;base64," + data;
-                            }
-                        });
-                }, 1000);
-            </script>
-        </body>
+    </body>
     </html>
     """
 
 
-# 📡 endpoint que devuelve solo la imagen
+# =========================
+# 📡 DEBUG
+# =========================
 @app.get("/last")
 def get_last():
     global last_image
     if last_image is None:
         return ""
-    return last_image
+    return PlainTextResponse(last_image)
