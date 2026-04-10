@@ -1,18 +1,26 @@
 from fastapi import FastAPI, Request, Header
+from fastapi.responses import HTMLResponse
 import cv2
 import numpy as np
-import random
+import base64
 
 app = FastAPI()
 
+# 🔐 CLAVE
 API_KEY = "ecoia123"
+
+# 📸 última imagen recibida
+last_image = None
 
 @app.get("/")
 def home():
-    return {"msg": "Servidor EcoIA estable con OpenCV 🔥"}
+    return {"msg": "Servidor EcoIA con visor en vivo 🔥"}
 
+# 📥 RECIBE IMAGEN
 @app.post("/upload")
 async def upload(request: Request, x_api_key: str = Header(None)):
+
+    global last_image
 
     if x_api_key != API_KEY:
         return {"error": "No autorizado"}
@@ -24,11 +32,11 @@ async def upload(request: Request, x_api_key: str = Header(None)):
     if img is None:
         return {"error": "Imagen inválida"}
 
-    # ===== PROCESAMIENTO =====
+    # ===== PROCESAMIENTO (opcional) =====
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     gray = cv2.equalizeHist(gray)
 
-    # ===== QR CON OPENCV =====
+    # ===== DETECTOR QR =====
     detector = cv2.QRCodeDetector()
     data, bbox, _ = detector.detectAndDecode(gray)
 
@@ -41,15 +49,59 @@ async def upload(request: Request, x_api_key: str = Header(None)):
         if len(parts) == 3:
             id, nombre, grado = parts
 
-    # ===== IA SIMULADA =====
-    objeto = random.choice(["plastico", "carton", "vidrio", "lata"])
+        # Dibujar cuadro del QR
+        if bbox is not None:
+            bbox = bbox.astype(int)
+            for i in range(len(bbox[0])):
+                pt1 = tuple(bbox[0][i])
+                pt2 = tuple(bbox[0][(i + 1) % len(bbox[0])])
+                cv2.line(img, pt1, pt2, (0, 255, 0), 2)
 
-    print(f"📦 {id} | {nombre} | {grado} | {objeto}")
+    # ===== GUARDAR IMAGEN PARA WEB =====
+    _, buffer = cv2.imencode('.jpg', img)
+    last_image = base64.b64encode(buffer).decode('utf-8')
+
+    print(f"📦 {id} | {nombre} | {grado}")
 
     return {
         "id": id,
         "nombre": nombre,
         "grado": grado,
-        "objeto": objeto,
+        "objeto": "pendiente",
         "puntos": 10
     }
+
+# 🌐 VISOR EN VIVO
+@app.get("/view", response_class=HTMLResponse)
+def view_image():
+
+    return f"""
+    <html>
+        <head>
+            <title>EcoIA Cámara</title>
+        </head>
+        <body style="text-align:center; font-family:sans-serif;">
+            <h2>📷 Cámara ESP32-CAM en vivo</h2>
+            <img id="cam" width="400"/>
+            
+            <script>
+                setInterval(() => {{
+                    fetch('/last')
+                        .then(res => res.text())
+                        .then(data => {{
+                            document.getElementById('cam').src = 
+                            "data:image/jpeg;base64," + data + "&t=" + new Date().getTime();
+                        }});
+                }}, 1000);
+            </script>
+        </body>
+    </html>
+    """
+
+# 📡 endpoint que devuelve solo la imagen
+@app.get("/last")
+def get_last():
+    global last_image
+    if last_image is None:
+        return ""
+    return last_image
