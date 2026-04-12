@@ -10,7 +10,7 @@ app = FastAPI()
 API_KEY = "ecoia123"
 
 # Firebase
-cred = credentials.Certificate("firebase_key.json")
+cred = credentials.Certificate("./firebase_key.json")
 firebase_admin.initialize_app(cred, {
     'databaseURL': 'https://TU-PROYECTO.firebaseio.com/'
 })
