@@ -12,7 +12,7 @@ API_KEY = "ecoia123"
 # Firebase
 cred = credentials.Certificate("./firebase_key.json")
 firebase_admin.initialize_app(cred, {
-    'databaseURL': 'https://TU-PROYECTO.firebaseio.com/'
+    'databaseURL': 'https://ecoia-bbb33-default-rtdb.firebaseio.com/'
 })
 
 qr_detector = cv2.QRCodeDetector()
